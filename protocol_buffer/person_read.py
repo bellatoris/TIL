@@ -34,3 +34,5 @@ f.close()
 
 list_people(address_book)
 
+print(address_book)
+
