@@ -12,6 +12,7 @@ git submodule add ssh://path.to.repo/project2
 submodule 을 pull 받거나, update 하고 싶은 경우
 
 ```
-git submodule update --recursive
+git submodule update --init --recursive # 처음의 경우
+git submodule update --recursive --remote
 ```
 하면 된다.
