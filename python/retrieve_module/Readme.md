@@ -22,6 +22,7 @@ from os import listdir, getcwd
 from os.path import isfile, join
 
 import importlib
+import inspect
 
 mypath = os.getcwd()
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
@@ -29,4 +30,5 @@ onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 for f in onlyfiles:
     module = importlib.import_module(f)
     for name, obj in inspect.getmembers(module, inspect.isclass):
+        print(obj)
 ```
