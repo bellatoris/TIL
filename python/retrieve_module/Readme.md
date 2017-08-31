@@ -4,7 +4,7 @@
 또한 retrieval 한 module 을 import 하는 것도 가능하다.
 
 ```python
-import pkguil
+import pkgutil
 import email
 
 package = email
