@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
 ### spawn
 *spawn* method 를 선택한 경우, child process 가 필요한 resources 에 객체가 
-존재하는 경우 해당 객체가 serialize 가능 해야 한다. *fork* 를 사용하는 경우 
-child process 가 parent 와 동일한 resources 를 모두 들고 있으므로, 이러한 
-문제가 없지만 Window 에서는 *fork* 방식을 사용 할 수 없으므로, serialization 
-을 염두해 두어야만 한다.
+존재하는 경우 serialize/deserialize 를 통해 객체의 전달이 이루어진다. 
+*fork* 를 사용하는 경우 child process 가 parent 와 동일한 resources 를 모두 
+들고 있으므로, 이러한 문제가 없지만 Window 에서는 *fork* 방식을 사용 할 수 
+없으므로, serialization 을 염두해 두어야만 한다.
