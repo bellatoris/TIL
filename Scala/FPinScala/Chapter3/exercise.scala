@@ -4,6 +4,15 @@ case class Cons[+A](head: A, tali: List[A]) extends List[A]
 
 
 object List {
+  def makeList(n: Int): List[Int] = {
+    def go(n: Int, acc: List[Int]): List[Int] = n match {
+      case 0 => acc
+      case n => go(n - 1, Cons(n, acc))
+    }
+
+    go(n, Nil)
+  }
+
   def sum(ints: List[Int]): Int = ints match {
     case Nil => 0
     case Cons(x, xs) => x + sum(xs)
@@ -114,9 +123,123 @@ object List {
     foldRight(reverse(as), z)((a, b) => f(b, a))
   }
 
-  def foldLeftVidFoldRight[A, B](as: List[A], z: B)(f: (B, A) => B): B = {
+  def foldLeftViaFoldRight[A, B](as: List[A], z: B)(f: (B, A) => B): B = {
     foldRight(as, (b: B) => b)((a, g) => ((b: B) => g(f(b, a))))(z)
   }
+
+  def foldRightViaFoldLeft[A, B](as: List[A], z: B)(f: (A, B) => B): B = {
+    foldLeft(as, (b: B) => b)((g, a) => ((b: B) => g(f(a, b))))(z)
+  }
+
+  def append2[A](l1: List[A], l2: List[A]): List[A] = {
+    foldRightViaFoldLeft(l1, l2)((a, as) => Cons(a, as))
+  }
+
+  def append3[A](l1: List[A], l2: List[A]): List[A] = {
+    foldLeft(reverse(l1), l2)((as, a) => Cons(a, as))
+  }
+
+  def flatten[A](l: List[List[A]]): List[A] = {
+    foldRightViaFoldLeft(l, Nil: List[A])((x, xs) => append(x, xs))
+  }
+
+  def concat[A](l: List[List[A]]): List[A] =
+    foldRightViaFoldLeft(l, List[A]())(append(_,_))
+
+  def addOne(ns: List[Int]): List[Int] = ns match {
+    case Nil => Nil
+    case Cons(x, xs) => Cons(x + 1, addOne(xs))
+  }
+
+  def doubleToString(ds: List[Double]): List[String] = ds match {
+    case Nil => Nil
+    case Cons(x, xs) => Cons(x.toString, doubleToString(xs))
+  }
+
+  def map[A, B](as: List[A])(f: A => B): List[B] = as match {
+    case Nil => Nil
+    case Cons(a, as) => Cons(f(a), map(as)(f))
+  }
+
+  def filter[A](as: List[A])(f: A => Boolean): List[A] = as match {
+    case Nil => Nil
+    case Cons(a, as) => if (f(a)) Cons(a, filter(as)(f)) else filter(as)(f)
+  }
+
+  def flatMap[A, B](as: List[A])(f: A => List[B]): List[B] = as match {
+    case Nil => Nil
+    case Cons(a, as) => append(f(a), flatMap(as)(f))
+  }
+
+  def filterViaFlatMap[A](as: List[A])(f: A => Boolean): List[A] =
+    flatMap(as)(a => if (f(a)) List(a) else Nil)
+
+  def addWith(ns1: List[Int], ns2: List[Int]): List[Int] = (ns1, ns2) match {
+    case (Nil, _) => Nil
+    case (_, Nil) => Nil
+    case (Cons(x1, xs1), Cons(x2, xs2)) => Cons(x1 + x2, addWith(xs1, xs2))
+  }
+
+  def zipWith[A,B,C](as1: List[A], as2: List[B])(f: (A, B) => C): List[C] =
+    (as1, as2) match {
+    case (Nil, _) => Nil
+    case (_, Nil) => Nil
+    case (Cons(x1, xs1), Cons(x2, xs2)) => Cons(f(x1, x2), zipWith(xs1, xs2)(f))
+  }
+
+  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = {
+    def go(sup: List[A]): Boolean = foldLeft(zipWith(sup, sub)(_ == _), true)(_ && _)
+
+    sup match {
+      case Cons(a, as) if length(sup) >= length(sub) => {
+        if (go(sup)) true else hasSubsequence(as, sub)
+      }
+      case _ => false
+    }
+  }
+}
+
+sealed trait Tree[+A]
+case class Leaf[A](value: A) extends Tree[A]
+case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
+
+object Tree {
+  def size[A](t: Tree[A]): Int = t match {
+    case Leaf(v) => 1
+    case Branch(l, r) => size(l) + size(r) + 1
+  }
+
+  def maximum(t: Tree[Int]): Int = t match {
+    case Leaf(v) => v
+    case Branch(l, r) => maximum(l) max maximum(r)
+  }
+
+  def depth[A](t: Tree[A]): Int = t match {
+    case Leaf(v) => 0
+    case Branch(l, r) => (depth(l) max depth(r)) + 1
+  }
+
+  def map[A,B](t: Tree[A])(f: A => B): Tree[B] = t match {
+    case Leaf(v) => Leaf(f(v))
+    case Branch(l, r) => Branch(map(l)(f), map(r)(f))
+  }
+
+  def fold[A,B](t: Tree[A])(f: A => B)(g: (B, B) => B): B = t match {
+    case Leaf(a) => f(a)
+    case Branch(l, r) => g(fold(l)(f)(g), fold(r)(f)(g))
+  }
+
+  def sizeViaFold[A](t: Tree[A]): Int =
+    fold(t)(a => 1)(_ + _ + 1)
+
+  def maximumViaFold(t: Tree[Int]): Int =
+    fold(t)(a => a)(_ max _)
+
+  def depthViaFold[A](t: Tree[A]): Int =
+    fold(t)(a => 0)((d1, d2) => (d1 max d2) + 1)
+
+  def mapVidFold[A, B](t: Tree[A])(f: A => B): Tree[B] = 
+    fold(t)(a => Leaf(f(a)): Tree[B])(Branch(_, _))
 }
 
 
@@ -154,5 +277,20 @@ object Main {
     println(List.reverse(List(1,2,3,4,5)))
     println(List.reverse2(List(1,2,3,4,5)))
     println(List.reverse3(List(1,2,3,4,5)))
+
+    println(List.append2(List(1,2,3), List(12,24,36)))
+    println(List.append3(List(1,2,3), List(12,24,36)))
+    println(List.flatten(List(List(1,2,3), List(3,4,5), List(6,7,8))))
+
+    println(List.addOne(List(1,2,3)))
+    println(List.filter(List(1,2,3,4,5))(n => n % 2 == 0))
+    println(List.flatMap(List(1,2,3))(i => List(i, i)))
+    println(List.filterViaFlatMap(List(1,2,3,4,5))(n => n % 2 == 0))
+
+    println(List.addWith(List(1,2,3), List(4,5,6)))
+
+    println(List.hasSubsequence(List(1,2,3,4), List(1,2,4)))
+    // val longList= List.makeList(1000000)
+    // println(List.foldRightViaFoldLeft(longList, 0)(_ + _))
   }
 }
