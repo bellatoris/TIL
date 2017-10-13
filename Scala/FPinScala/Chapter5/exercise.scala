@@ -1,0 +1,159 @@
+object Main {
+  def if2[A](cond: Boolean, onTrue: => A, onFalse: => A): A = 
+    if (cond) onTrue else onFalse
+
+  sealed trait Stream[+A] {
+    def headOption: Option[A] = this match {
+      case Empty => None
+      case Cons(h, t) => Some(h())
+    }
+
+    def toList: List[A] = this match {
+      case Empty => Nil
+      case Cons(h, t) => h() :: t().toList
+    }
+
+    def take(n: Int): Stream[A] = this match {
+      case Cons(h, t) if n > 0 => Stream.cons(h(), t().take(n - 1))
+      case _ => Stream.empty
+    }
+
+    def drop(n: Int): Stream[A] = this match {
+      case Cons(h, t) if n > 0 => t().drop(n - 1)
+      case _ => this
+    }
+
+    def takeWhile(p: A => Boolean): Stream[A] = this match {
+      case Cons(h, t) if p(h()) => Stream.cons(h(), t().takeWhile(p))
+      case _ => Stream.empty
+    }
+
+    def exists(p: A => Boolean): Boolean = this match {
+      case Cons(h, t) => p(h()) || t().exists(p)
+      case _ => false
+    }
+
+    def foldRight[B](z: => B)(f: (A, => B) => B): B = this match {
+      case Cons(h, t) => f(h(), t().foldRight(z)(f))
+      case _ => z
+    }
+
+    def existsViaFoldRight(p: A => Boolean): Boolean = 
+      foldRight(false)((a, b) => p(a) || b)
+
+    def forAll(p: A => Boolean): Boolean =
+      foldRight(true)((a, b) => p(a) && b)
+
+    def takeWhileViaFoldRight(p: A => Boolean): Stream[A] = 
+      foldRight(Empty: Stream[A])((a, b) => if (p(a)) Stream.cons(a, b) else Stream.empty)
+
+    def headOptionViaFoldRight: Option[A] =
+      foldRight(None: Option[A])((a, b) => Some(a))
+
+    def map[B](f: A => B): Stream[B] =
+      foldRight(Empty: Stream[B])((a, b) => Stream.cons(f(a), b))
+
+    def filter(f: A => Boolean): Stream[A] =
+      foldRight(Empty: Stream[A])((a, b) => if (f(a)) Stream.cons(a, b) else b)
+
+    def append[B>:A](s: Stream[B]): Stream[B] =
+      foldRight(s: Stream[B])((a, b) => Stream.cons(a, b))
+
+    def flatMap[B](f: A => Stream[B]): Stream[B] = 
+      foldRight(Empty: Stream[B])((a, b) => f(a).append(b))
+
+    def find(p: A => Boolean): Option[A] =
+      filter(p).headOption
+  }
+  case object Empty extends Stream[Nothing]
+  case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
+
+  object Stream {
+    def cons[A](hd: => A, tl: => Stream[A]): Stream[A] = {
+      // Why caching?
+      lazy val head = hd
+      lazy val tail = tl
+      Cons(() => head, () => tail)
+    }
+
+    def empty[A]: Stream[A] = Empty
+
+    def apply[A](as: A*): Stream[A] =
+      if (as.isEmpty) empty else cons(as.head, apply(as.tail: _*))
+
+    def constant[A](a: A): Stream[A] =
+      cons(a, constant(a))
+
+    def from(n: Int): Stream[Int] =
+      cons(n, from(n + 1))
+
+    def fib: Stream[Int] = {
+      def nested(state: (Int, Int)): Stream[Int] = {
+        val first = state._1
+        val second = state._2
+
+        cons(first, nested((second, first + second)))
+      }
+      nested((0, 1))
+    }
+
+    def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = f(z) match {
+      case None => empty
+      case Some((a, s)) => cons(a, unfold(s)(f))
+    }
+  }
+
+  def expensive(x: Int): Int = {
+    println("expensive")
+    2 * x
+  }
+
+
+  def main(args: Array[String]): Unit = {
+    /*
+    val a = 3
+    if2(a < 22,
+      println("a"),
+      println("b")
+    )
+    */
+
+    val tl = Stream(1,2,3,4,5)
+
+    val x = Cons(() => expensive(3), () => tl)
+    val h1 = x.headOption
+    val h2 = x.headOption
+
+    val x2 = Stream.cons(expensive(3), tl)
+    val h3 = x2.headOption
+    val h4 = x2.headOption
+
+    println(tl.toList)
+    println(tl.take(3).toList)
+    println(tl.drop(3).toList)
+
+    println(tl.takeWhile(a => a < 3).toList)
+
+    println(tl.headOptionViaFoldRight)
+    println(tl.map(x => x).toList)
+    println(tl.append(tl).toList)
+
+    println(Stream(1,2,3,4).map(_ + 10).filter(_ % 2 == 0) match {
+      case Cons(h, t) => h()
+      case _ => ""
+    })
+
+    def ones: Stream[Int] = Stream.cons(1, ones)
+    println(ones.take(5).toList)
+    println(ones.exists(_ % 2 != 0))
+    println(ones.map(_ + 1).exists(_ % 2 == 0))
+    println(ones.takeWhile(_ == 1))
+    println(ones.forAll(_ != 1))
+
+    println(Stream.constant(4).take(5).toList)
+    println(Stream.from(4).take(5).toList)
+
+    println(Stream.fib.take(10).toList)
+    println(Stream.unfold((0, 1))(p => Some((p._1, (p._2, p._1 + p._2)))).take(10).toList)
+  }
+}
