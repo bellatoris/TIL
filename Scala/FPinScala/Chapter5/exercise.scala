@@ -64,6 +64,38 @@ object Main {
 
     def find(p: A => Boolean): Option[A] =
       filter(p).headOption
+
+    def mapViaUnfold[B](f: A => B): Stream[B] =
+      Stream.unfold(this)(s => s match {
+        case Cons(h, t) => Some(f(h()), t())
+        case _ => None
+      })
+
+    def takeViaUnfold(n: Int): Stream[A] =
+      Stream.unfold((this, n))(p => p match {
+        case (Cons(h, t), n) if n > 0 => Some((h(), (t(), n - 1)))
+        case _ => None
+      })
+
+    def takeWhileViaUnfold(p: A => Boolean): Stream[A] =
+      Stream.unfold(this)(s => s match {
+        case Cons(h, t) if p(h()) => Some((h(), t()))
+        case _ => None
+      })
+
+    def zipWith[B,C](as2: Stream[B])(f: (A, B) => C): Stream[C] =
+      Stream.unfold((this, as2))(p => p match {
+        case (Cons(h1, t1), Cons(h2, t2)) => Some((f(h1(), h2()), (t1(), t2())))
+        case _ => None
+      })
+
+    def zipAll[B](s2: Stream[B]): Stream[(Option[A], Option[B])] = 
+      Stream.unfold((this, s2))(p => p match {
+        case (Cons(h1, t1), Cons(h2, t2)) => Some(((Some(h1()), Some(h2())), (t1(), t2())))
+        case (Cons(h1, t1), _) => Some(((Some(h1()), None), (t1(), Stream.empty)))
+        case (_, Cons(h2, t2)) => Some(((None, Some(h2())), (Stream.empty, t2())))
+        case _ => None
+      })
   }
   case object Empty extends Stream[Nothing]
   case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
@@ -80,6 +112,9 @@ object Main {
 
     def apply[A](as: A*): Stream[A] =
       if (as.isEmpty) empty else cons(as.head, apply(as.tail: _*))
+
+    def ones: Stream[Int] =
+      cons(1, ones)
 
     def constant[A](a: A): Stream[A] =
       cons(a, constant(a))
@@ -101,6 +136,11 @@ object Main {
       case None => empty
       case Some((a, s)) => cons(a, unfold(s)(f))
     }
+
+    def fibsViaUnfold: Stream[Int] = unfold((0, 1))(p => Some(p._1, (p._2, p._1 + p._2)))
+    def fromViaUnfold(n: Int): Stream[Int] = unfold(n)(n => Some(n, n + 1))
+    def constantViaUnfold[A](a: A): Stream[A] = unfold(a)(a => Some(a, a))
+    def onesViaUnfold: Stream[Int] = unfold(1)(n => Some(1, 1))
   }
 
   def expensive(x: Int): Int = {
@@ -155,5 +195,13 @@ object Main {
 
     println(Stream.fib.take(10).toList)
     println(Stream.unfold((0, 1))(p => Some((p._1, (p._2, p._1 + p._2)))).take(10).toList)
+    println(Stream.fibsViaUnfold.take(10).toList)
+    println(Stream.fromViaUnfold(4).take(5).toList)
+    println(Stream.constantViaUnfold(3).take(5).toList)
+    println(Stream.onesViaUnfold.take(5).toList)
+    println(Stream.onesViaUnfold.map(n => n + 4).take(5).toList)
+    println(Stream.ones.map(n => n + 4).take(5).toList)
+    println(Stream.ones.mapViaUnfold(n => n + 4).take(5).toList)
+    println(Stream.ones.mapViaUnfold(n => n + 4).takeViaUnfold(5).toList)
   }
 }
