@@ -96,6 +96,62 @@ object Main {
         case (_, Cons(h2, t2)) => Some(((None, Some(h2())), (Stream.empty, t2())))
         case _ => None
       })
+
+    def hasSubsequence[A](sub: Stream[A]): Boolean = {
+      Stream.unfold(this)(s => s match {
+        case Cons(h, t) =>
+          if (startsWith2(s)) Some((true, Stream.empty))
+          else Some((false, t()))
+        case _ => None}).foldRight(false)(_ || _)
+    }
+
+    def startsWith[A](s: Stream[A]): Boolean = {
+      Stream.unfold(this, s)(p => p match {
+        case (Cons(h1, t1), Cons(h2, t2)) => (h1() == h2()) match {
+          case true => Some((true, (t1(), t2())))
+          case false => Some((false, (Stream.empty, Stream.empty)))
+        }
+        case (Cons(h1, t1), _) =>
+          Some((true, (Stream.empty, Stream.empty)))
+        case (_, Cons(h2, t2)) =>
+          Some((false, (Stream.empty, Stream.empty)))
+        case _ => None
+      }).foldRight(true)(_ && _)
+    }
+
+    def startsWith2[A](s: Stream[A]): Boolean =
+      zipAll(s).takeWhile(!_._2.isEmpty) forAll {
+        case(h, h2) => h == h2
+      }
+
+    def tails: Stream[Stream[A]] = {
+      Stream.unfold(this)(s => s match {
+        case Cons(h, t) => Some((t(), t()))
+        case _ => None
+      }) append Stream(Stream.empty)
+    }
+
+    def hasSubsequnce2[A](s: Stream[A]): Boolean =
+      tails exists (_ startsWith s)
+
+    def scanRight[B](z: => B)(f: (A, => B) => B): Stream[B] =
+      this match {
+        case Cons(h, t) => {
+          println("scanRight", h())
+          lazy val tail = t().scanRight(z)(f)
+          Stream.cons(f(h(), tail.headOption.get), tail)
+        }
+        case _ => Stream(z)
+      }
+
+    def scanRight2(z: => B)(f: (A, => B) => B): Stream[B] =
+      foldRight((z, Stream(z))((a, p) => {
+        // p0 is passed by-name and used in by-name args in f and cons. 
+        // So use lazy val to ensure only one evaluation...
+        lazy val p1 = p
+        val b2 = f(a, p1._1)
+        (b2, Stream.cons(b2, p1._2)
+      })._2
   }
   case object Empty extends Stream[Nothing]
   case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
@@ -203,5 +259,9 @@ object Main {
     println(Stream.ones.map(n => n + 4).take(5).toList)
     println(Stream.ones.mapViaUnfold(n => n + 4).take(5).toList)
     println(Stream.ones.mapViaUnfold(n => n + 4).takeViaUnfold(5).toList)
+    println(Stream(1,2,3,4,1,1,1,1).hasSubsequence(Stream(1,1,1,1)))
+    println(Stream(1,2,3,4,1,1,1,1).startsWith(Stream(1,1,1,1)))
+    println(Stream(1,2,3,4,1,1,1,1).startsWith(Stream(1,2,3,4)))
+    println(Stream(1,2,3).scanRight(0)(_ + _).toList)
   }
 }

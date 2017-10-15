@@ -188,7 +188,8 @@ object List {
   }
 
   def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = {
-    def go(sup: List[A]): Boolean = foldLeft(zipWith(sup, sub)(_ == _), true)(_ && _)
+    def go(sup: List[A]): Boolean =
+      foldLeft(zipWith(sup, sub)(_ == _), true)(_ && _)
 
     sup match {
       case Cons(a, as) if length(sup) >= length(sub) => {
