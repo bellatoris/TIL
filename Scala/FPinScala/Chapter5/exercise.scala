@@ -144,13 +144,13 @@ object Main {
         case _ => Stream(z)
       }
 
-    def scanRight2(z: => B)(f: (A, => B) => B): Stream[B] =
-      foldRight((z, Stream(z))((a, p) => {
+    def scanRight2[B](z: => B)(f: (A, => B) => B): Stream[B] =
+      foldRight((z, Stream(z)))((a, p) => {
         // p0 is passed by-name and used in by-name args in f and cons. 
         // So use lazy val to ensure only one evaluation...
         lazy val p1 = p
         val b2 = f(a, p1._1)
-        (b2, Stream.cons(b2, p1._2)
+        (b2, Stream.cons(b2, p1._2))
       })._2
   }
   case object Empty extends Stream[Nothing]
