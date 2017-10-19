@@ -189,7 +189,21 @@ object Main {
       }
 
     def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = for {
+      // List[State[Machine, Unit]] => State[Machine, List[Unit]]
       _ <- State.sequence(inputs map (State.modify[Machine] _ compose update))
+      // f compose g = f(g(x))
+      // ```
+      // scala> def addUmm(x: String) = x + " umm"
+      // addUmm: (x: String)String
+      // scala>  def addAhem(x: String) = x + " ahem"
+      // addAhem: (x: String)String
+      //
+      // scala> val ummThenAhem = addAhem _ compose addUmm _
+      // ummThenAhem: (String) => String = <function1>
+      // ```
+      // State.modify[Machine] _ compose update
+      // State.modify(update(input))
+      // _ <- State.sequence(inputs.map(input => State.modify[Machine](update(input))))
       s <- State.get
     } yield (s.coins, s.candies)
   }
