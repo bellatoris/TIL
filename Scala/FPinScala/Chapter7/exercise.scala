@@ -1,5 +1,3 @@
-package Chapter7
-
 import java.util.concurrent._
 
 
@@ -8,19 +6,8 @@ object Main {
    * def map2[A,B,C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C]
    */
 
-  sealed trait Future[A] {
-     private[Chatper7] def apply(k: A => Unit): Unit
-  }
   type Par[A] = ExecutorService => Future[A]
-  def run[A](s: ExecutorService)(a: Par[A]): A = {
-    val ref = new AtomicReference[A]
-    val latch = new CountDownLatch(1)
-
-    p(es) { a => ref.set(a); latch.countDown }
-
-    latch.await
-    ref.et
-  }
+  def run[A](s: ExecutorService)(a: Par[A]): Future[A] = a(s)
 
   object Par {
     def unit[A](a: A): Par[A] = (es: ExecutorService) => UnitFuture(a)
