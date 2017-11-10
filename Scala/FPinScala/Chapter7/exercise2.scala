@@ -9,6 +9,7 @@ object Main {
    */
 
   sealed trait Future[A] {
+    // k is a callback
     private[Chapter7] def apply(k: A => Unit): Unit
   }
   type Par[A] = ExecutorService => Future[A]
@@ -38,6 +39,9 @@ object Main {
           eval(es)(a(es)(cb))
       }
 
+    def lazyUnit[A](a: => A): Par[A] = fork(unit(a))
+    def asyncF[A,B](f: A => B): A => Par[B] = (a: A) => lazyUnit(f(a))
+
     def map2[A,B,C](pa: Par[A], pb: Par[B])(f: (A, B) => C): Par[C] =
       es => new Future[C] {
         def apply(cb: C => Unit): Unit = {
@@ -59,9 +63,6 @@ object Main {
           pb(es)(b => combiner ! Right(b))
         }
       }
-
-    def lazyUnit[A](a: => A): Par[A] = fork(unit(a))
-    def asyncF[A,B](f: A => B): A => Par[B] = (a: A) => lazyUnit(f(a))
 
     def map[A,B](pa: Par[A])(f: A => B): Par[B] = 
       map2(pa, unit(()))((a, _) => f(a))

@@ -181,7 +181,7 @@ object Main {
     val S = Executors.newFixedThreadPool(1)
     a(S)
     S.shutdown()
-    // println(Par.equal(S)(a, Par.fork(a)))    // Deadlock!
+    println(Par.equal(S)(a, Par.fork(a)))    // Deadlock!
     // println(run(es)(sum(i.toIndexedSeq)).get())
     // println(run(es)(Par.lazyUnit(i)).get)
   }
