@@ -127,6 +127,53 @@ object Main {
 
     def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean =
       p(e).get == p2(e).get
+
+    /*
+    def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = 
+      es => {
+        if (run(es)(cond).get) t(es)
+        else f(es)
+      }
+    */
+
+    def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] =
+      es => {
+        val m = run(es)(n).get
+        choices(m)(es)
+      }
+
+    def choice[A](cond: Par[Boolean])(p: Par[A], p2: Par[A]): Par[A] =
+      choiceN(map(cond)(b => if (b) 0 else 1))(List(p, p2))
+
+    def choiceMap[K,V](key: Par[K])(choices: Map[K, Par[V]]): Par[V] =
+      es => {
+        val k = run(es)(key).get
+        choices(k)(es)
+      }
+
+    def chooser[A,B](pa: Par[A])(choices: A => Par[B]): Par[B] =
+      es => {
+        val a = pa(es).get
+        choices(a)(es)
+      }
+
+    def choiceN2[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = 
+      chooser(n)(n => choices(n))
+
+    def choice2[A](cond: Par[Boolean])(p: Par[A], p2: Par[A]): Par[A] =
+      chooser(cond)(b => if (b) p else p2)
+
+    def flatMap[A,B](a: Par[A])(choices: A => Par[B]): Par[B] =
+      es => {
+        val k: A = a(es).get()
+        choices(k)(es)
+      }
+
+    def join[A](a: Par[Par[A]]): Par[A] =
+      es => {
+        val pa: Par[A] = a(es).get()
+        pa(es)
+      }
   }
 
   def sum(ints: IndexedSeq[Int]): Par[Int] = Par.fork {
@@ -165,10 +212,10 @@ object Main {
       }
     }
     count(p.toIndexedSeq)
-
-    def delay[A](fa: => Par[A]): Par[A] =
-      es => fa(es)
   }
+
+  def delay[A](fa: => Par[A]): Par[A] =
+    es => fa(es)
 
   def main(args: Array[String]): Unit = {
     val i = List(1,2,3,4,5,6,7,8,9,10)
@@ -181,7 +228,7 @@ object Main {
     val S = Executors.newFixedThreadPool(1)
     a(S)
     S.shutdown()
-    println(Par.equal(S)(a, Par.fork(a)))    // Deadlock!
+    // println(Par.equal(S)(a, Par.fork(a)))    // Deadlock!
     // println(run(es)(sum(i.toIndexedSeq)).get())
     // println(run(es)(Par.lazyUnit(i)).get)
   }
