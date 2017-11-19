@@ -174,6 +174,12 @@ object Main {
         val pa: Par[A] = a(es).get()
         pa(es)
       }
+
+    def flatMapViaJoin[A,B](a: Par[A])(choices: A => Par[B]): Par[B] =
+      join(map(a)(choices))
+
+    def joinViaFlatMap[A](a: Par[Par[A]]): Par[A] = 
+      flatMap(a)(pa => pa)
   }
 
   def sum(ints: IndexedSeq[Int]): Par[Int] = Par.fork {
