@@ -1,6 +1,11 @@
 package Chapter8
 
+import Chapter5.{Stream, Cons, Empty}
 import Chapter6.state._
+import Chapter7._
+import Chapter7.Par.Par
+import java.util.concurrent.{Executors,ExecutorService}
+
 /*
 {
   // exercise 8.3
