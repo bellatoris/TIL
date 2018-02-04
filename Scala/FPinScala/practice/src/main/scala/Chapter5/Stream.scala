@@ -1,8 +1,10 @@
 package Chapter5
 
 
+/*
 def if2[A](cond: Boolean, onTrue: => A, onFalse: => A): A = 
   if (cond) onTrue else onFalse
+*/
 
 sealed trait Stream[+A] {
   def headOption: Option[A] = this match {
@@ -203,68 +205,70 @@ object Stream {
   def onesViaUnfold: Stream[Int] = unfold(1)(n => Some(1, 1))
 }
 
-def expensive(x: Int): Int = {
-  println("expensive")
-  2 * x
-}
+object Test { 
+  def expensive(x: Int): Int = {
+    println("expensive")
+    2 * x
+  }
 
 
-def main(args: Array[String]): Unit = {
-  /*
-  val a = 3
-  if2(a < 22,
-    println("a"),
-    println("b")
-  )
-  */
+  def main(args: Array[String]): Unit = {
+    /*
+    val a = 3
+    if2(a < 22,
+      println("a"),
+      println("b")
+    )
+    */
 
-  val tl = Stream(1,2,3,4,5)
+    val tl = Stream(1,2,3,4,5)
 
-  val x = Cons(() => expensive(3), () => tl)
-  val h1 = x.headOption
-  val h2 = x.headOption
+    val x = Cons(() => expensive(3), () => tl)
+    val h1 = x.headOption
+    val h2 = x.headOption
 
-  val x2 = Stream.cons(expensive(3), tl)
-  val h3 = x2.headOption
-  val h4 = x2.headOption
+    val x2 = Stream.cons(expensive(3), tl)
+    val h3 = x2.headOption
+    val h4 = x2.headOption
 
-  println(tl.toList)
-  println(tl.take(3).toList)
-  println(tl.drop(3).toList)
+    println(tl.toList)
+    println(tl.take(3).toList)
+    println(tl.drop(3).toList)
 
-  println(tl.takeWhile(a => a < 3).toList)
+    println(tl.takeWhile(a => a < 3).toList)
 
-  println(tl.headOptionViaFoldRight)
-  println(tl.map(x => x).toList)
-  println(tl.append(tl).toList)
+    println(tl.headOptionViaFoldRight)
+    println(tl.map(x => x).toList)
+    println(tl.append(tl).toList)
 
-  println(Stream(1,2,3,4).map(_ + 10).filter(_ % 2 == 0) match {
-    case Cons(h, t) => h()
-    case _ => ""
-  })
+    println(Stream(1,2,3,4).map(_ + 10).filter(_ % 2 == 0) match {
+      case Cons(h, t) => h()
+      case _ => ""
+    })
 
-  def ones: Stream[Int] = Stream.cons(1, ones)
-  println(ones.take(5).toList)
-  println(ones.exists(_ % 2 != 0))
-  println(ones.map(_ + 1).exists(_ % 2 == 0))
-  println(ones.takeWhile(_ == 1))
-  println(ones.forAll(_ != 1))
+    def ones: Stream[Int] = Stream.cons(1, ones)
+    println(ones.take(5).toList)
+    println(ones.exists(_ % 2 != 0))
+    println(ones.map(_ + 1).exists(_ % 2 == 0))
+    println(ones.takeWhile(_ == 1))
+    println(ones.forAll(_ != 1))
 
-  println(Stream.constant(4).take(5).toList)
-  println(Stream.from(4).take(5).toList)
+    println(Stream.constant(4).take(5).toList)
+    println(Stream.from(4).take(5).toList)
 
-  println(Stream.fib.take(10).toList)
-  println(Stream.unfold((0, 1))(p => Some((p._1, (p._2, p._1 + p._2)))).take(10).toList)
-  println(Stream.fibsViaUnfold.take(10).toList)
-  println(Stream.fromViaUnfold(4).take(5).toList)
-  println(Stream.constantViaUnfold(3).take(5).toList)
-  println(Stream.onesViaUnfold.take(5).toList)
-  println(Stream.onesViaUnfold.map(n => n + 4).take(5).toList)
-  println(Stream.ones.map(n => n + 4).take(5).toList)
-  println(Stream.ones.mapViaUnfold(n => n + 4).take(5).toList)
-  println(Stream.ones.mapViaUnfold(n => n + 4).takeViaUnfold(5).toList)
-  println(Stream(1,2,3,4,1,1,1,1).hasSubsequence(Stream(1,1,1,1)))
-  println(Stream(1,2,3,4,1,1,1,1).startsWith(Stream(1,1,1,1)))
-  println(Stream(1,2,3,4,1,1,1,1).startsWith(Stream(1,2,3,4)))
-  println(Stream(1,2,3).scanRight(0)(_ + _).toList)
+    println(Stream.fib.take(10).toList)
+    println(Stream.unfold((0, 1))(p => Some((p._1, (p._2, p._1 + p._2)))).take(10).toList)
+    println(Stream.fibsViaUnfold.take(10).toList)
+    println(Stream.fromViaUnfold(4).take(5).toList)
+    println(Stream.constantViaUnfold(3).take(5).toList)
+    println(Stream.onesViaUnfold.take(5).toList)
+    println(Stream.onesViaUnfold.map(n => n + 4).take(5).toList)
+    println(Stream.ones.map(n => n + 4).take(5).toList)
+    println(Stream.ones.mapViaUnfold(n => n + 4).take(5).toList)
+    println(Stream.ones.mapViaUnfold(n => n + 4).takeViaUnfold(5).toList)
+    println(Stream(1,2,3,4,1,1,1,1).hasSubsequence(Stream(1,1,1,1)))
+    println(Stream(1,2,3,4,1,1,1,1).startsWith(Stream(1,1,1,1)))
+    println(Stream(1,2,3,4,1,1,1,1).startsWith(Stream(1,2,3,4)))
+    println(Stream(1,2,3).scanRight(0)(_ + _).toList)
+  }
 }

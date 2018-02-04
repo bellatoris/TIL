@@ -1,49 +1,35 @@
-object Main {
-  def failingFn(i: Int): Int = {
-    val y: Int = throw new Exception("fail!")
-    try {
-      val x = 42 + 5
-      x + y
-    }
-    catch { case e: Exception => 43 }
+package Chapter4
+
+
+
+sealed trait Option[+A] {
+  def map[B](f: A => B): Option[B] = this match {
+    case Some(a) => Some(f(a))
+    case None => None
   }
 
-  def failingFn2(i: Int): Int = {
-    try {
-      val x = 42 + 5
-      x + ((throw new Exception("fail!")): Int)
-
-    }
-    catch { case e: Exception => 43 }
+  def flatMap[B](f: A => Option[B]): Option[B] = {
+    map(f) getOrElse None
   }
 
-  sealed trait Option[+A] {
-    def map[B](f: A => B): Option[B] = this match {
-      case Some(a) => Some(f(a))
-      case None => None
-    }
-
-    def flatMap[B](f: A => Option[B]): Option[B] = {
-      map(f) getOrElse None
-    }
-
-    def getOrElse[B >: A](default: => B): B = this match {
-      case Some(a) => a
-      case None => default
-    }
-
-    def orElse[B >: A](ob: => Option[B]): Option[B] = {
-      map(a => Some(a)) getOrElse ob
-    }
-
-    def filter(f: A => Boolean): Option[A] = {
-      flatMap(a => if (f(a)) Some(a) else None)
-    }
+  def getOrElse[B >: A](default: => B): B = this match {
+    case Some(a) => a
+    case None => default
   }
 
-  case class Some[+A](get: A) extends Option[A]
-  case object None extends Option[Nothing]
+  def orElse[B >: A](ob: => Option[B]): Option[B] = {
+    map(a => Some(a)) getOrElse ob
+  }
 
+  def filter(f: A => Boolean): Option[A] = {
+    flatMap(a => if (f(a)) Some(a) else None)
+  }
+}
+
+case class Some[+A](get: A) extends Option[A]
+case object None extends Option[Nothing]
+
+object Option {
   def mean(xs: Seq[Double]): Option[Double] = 
     if (xs.isEmpty) None
     else Some(xs.sum / xs.length)
@@ -100,36 +86,38 @@ object Main {
       aa <- a
       bb <- b
     } yield f(aa, bb)
+}
 
-  sealed trait Either[+E, +A] {
-    def map[B](f: A => B): Either[E, B] = this match {
-      case Left(v) => Left(v)
-      case Right(v) => Right(f(v))
-    }
-
-    def flatMap[EE >: E, B](f: A => Either[EE, B]): Either[EE, B] = this match {
-      case Left(v) => Left(v)
-      case Right(v) => f(v)
-    }
-
-    def orElse[EE >: E, B >: A](b: => Either[EE, B]): Either[EE, B] = this match {
-      case Left(v) => b
-      case Right(v) => Right(v)
-    }
-
-    def map2[EE >: E, B, C](b: Either[EE, B])(f: (A, B) => C): Either[EE, C] = {
-      flatMap(a => b.map(bb => f(a, bb)))
-    }
-
-    def map2ViaFor[EE >: E, B, C](b: Either[EE, B])(f: (A, B) => C): Either[EE, C] =
-      for {
-        a <- this
-        b1 <- b
-      } yield f(a, b1)
+sealed trait Either[+E, +A] {
+  def map[B](f: A => B): Either[E, B] = this match {
+    case Left(v) => Left(v)
+    case Right(v) => Right(f(v))
   }
-  case class Left[+E](value: E) extends Either[E, Nothing]
-  case class Right[+A](value: A) extends Either[Nothing, A]
 
+  def flatMap[EE >: E, B](f: A => Either[EE, B]): Either[EE, B] = this match {
+    case Left(v) => Left(v)
+    case Right(v) => f(v)
+  }
+
+  def orElse[EE >: E, B >: A](b: => Either[EE, B]): Either[EE, B] = this match {
+    case Left(v) => b
+    case Right(v) => Right(v)
+  }
+
+  def map2[EE >: E, B, C](b: Either[EE, B])(f: (A, B) => C): Either[EE, C] = {
+    flatMap(a => b.map(bb => f(a, bb)))
+  }
+
+  def map2ViaFor[EE >: E, B, C](b: Either[EE, B])(f: (A, B) => C): Either[EE, C] =
+    for {
+      a <- this
+      b1 <- b
+    } yield f(a, b1)
+}
+case class Left[+E](value: E) extends Either[E, Nothing]
+case class Right[+A](value: A) extends Either[Nothing, A]
+
+object Either {
   def mean2(xs: IndexedSeq[Double]): Either[String, Double] =
     if (xs.isEmpty)
       Left("mean of empty list!")
@@ -154,11 +142,13 @@ object Main {
   def sequenceViaTraverse2[E, A](es: List[Either[E, A]]): Either[E, List[A]] = {
     traverse2(es)(x => x)
   }
+}
 
-  case class Person(name: Name, age: Age)
-  sealed class Name(val value: String)
-  sealed class Age(val value: Int)
+case class Person(name: Name, age: Age)
+sealed class Name(val value: String)
+sealed class Age(val value: Int)
 
+object Person {
   def mkName(name: String): Either[String, Name] =
     if (name == "" || name == null) Left("Name is empty.")
     else Right(new Name(name))
@@ -176,5 +166,25 @@ object Main {
       case Left(v) => println(v)
       case _ => println()
     }
+  }
+}
+
+object Test {
+  def failingFn(i: Int): Int = {
+    val y: Int = throw new Exception("fail!")
+    try {
+      val x = 42 + 5
+      x + y
+    }
+    catch { case e: Exception => 43 }
+  }
+
+  def failingFn2(i: Int): Int = {
+    try {
+      val x = 42 + 5
+      x + ((throw new Exception("fail!")): Int)
+
+    }
+    catch { case e: Exception => 43 }
   }
 }

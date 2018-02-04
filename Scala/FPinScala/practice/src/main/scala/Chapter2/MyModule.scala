@@ -1,4 +1,7 @@
-object MyModule {
+package Chapter2
+
+
+object MyModuel {
   def abs(n: Int): Int = 
     if (n < 0) -n
     else n

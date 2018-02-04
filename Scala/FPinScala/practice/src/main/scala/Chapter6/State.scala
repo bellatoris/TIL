@@ -14,116 +14,122 @@ case class SimpleRNG(seed: Long) extends RNG {
   }
 }
 
-def nonNegativeInt(rng: RNG): (Int, RNG) = {
-   val (n1, rng2) = rng.nextInt
+object RNG {
+  def nonNegativeInt(rng: RNG): (Int, RNG) = {
+     val (n1, rng2) = rng.nextInt
 
-   if (n1 > Int.MaxValue) nonNegativeInt(rng2)
-   else if (n1 < 0 || n1 == Int.MinValue) nonNegativeInt(rng2)
-   else (n1, rng2)
-}
+     if (n1 > Int.MaxValue) nonNegativeInt(rng2)
+     else if (n1 < 0 || n1 == Int.MinValue) nonNegativeInt(rng2)
+     else (n1, rng2)
+  }
 
-def nonNegativeInt2(rng: RNG): (Int, RNG) = {
-  val (i, r) = rng.nextInt
-  (if (i < 0) -(i + 1) else i, r)
-}
-
-def double(rng: RNG): (Double, RNG) = {
-  val (i, r) = nonNegativeInt2(rng)
-  (i / (Int.MaxValue.toDouble + 1), r)
-}
-
-def intDouble(rng: RNG): ((Int, Double), RNG) = {
-  val (i, r) = rng.nextInt
-  val (d, r2) = double(r)
-
-  ((i ,d), r2)
-}
-
-def doubleInt(rng: RNG): ((Double, Int), RNG) = {
-  val ((i, d), r) = intDouble(rng)
-  ((d, i), r)
-}
-
-def double3(rng: RNG): ((Double, Double, Double), RNG) = {
-  val (d, r) = double(rng)
-  val (d2, r2) = double(r)
-  val (d3, r3) = double(r2)
-
-  ((d, d2, d3), r3)
-}
-
-def ints(count: Int)(rng: RNG): (List[Int], RNG) = count match {
-  case c if c > 0 => {
+  def nonNegativeInt2(rng: RNG): (Int, RNG) = {
     val (i, r) = rng.nextInt
-    println(r)
-    val (il, r2) = ints(c - 1)(r)
-
-    (i :: il, r2)
-  }
-  case _ => (Nil, rng)
-}
-
-type Rand[+A] = RNG => (A, RNG)
-// type Rand[+A] = State[RNG, A]
-
-def unit[A](a: A): Rand[A] = 
-  rng => (a, rng)
-
-def map[A,B](s: Rand[A])(f: A => B): Rand[B] = 
-  rng => {
-    val (a, rng2) = s(rng)
-    (f(a), rng2)
+    (if (i < 0) -(i + 1) else i, r)
   }
 
-def nonNegativeEven: Rand[Int] =
-  map(nonNegativeInt)(i => i - i % 2)
+  def double(rng: RNG): (Double, RNG) = {
+    val (i, r) = nonNegativeInt2(rng)
+    (i / (Int.MaxValue.toDouble + 1), r)
+  }
 
-def doubleViaMap: Rand[Double] =
-  map(nonNegativeInt)(i => i / (Int.MaxValue.toDouble + 1))
+  def intDouble(rng: RNG): ((Int, Double), RNG) = {
+    val (i, r) = rng.nextInt
+    val (d, r2) = double(r)
 
-def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = {
-  rng => {
-    val (a, rng1) = ra(rng)
-    val (b, rng2) = rb(rng1)
-    (f(a,b), rng2)
+    ((i ,d), r2)
+  }
+
+  def doubleInt(rng: RNG): ((Double, Int), RNG) = {
+    val ((i, d), r) = intDouble(rng)
+    ((d, i), r)
+  }
+
+  def double3(rng: RNG): ((Double, Double, Double), RNG) = {
+    val (d, r) = double(rng)
+    val (d2, r2) = double(r)
+    val (d3, r3) = double(r2)
+
+    ((d, d2, d3), r3)
+  }
+
+  def ints(count: Int)(rng: RNG): (List[Int], RNG) = count match {
+    case c if c > 0 => {
+      val (i, r) = rng.nextInt
+      println(r)
+      val (il, r2) = ints(c - 1)(r)
+
+      (i :: il, r2)
+    }
+    case _ => (Nil, rng)
   }
 }
 
-def both[A,B](ra: Rand[A], rb: Rand[B]): Rand[(A, B)] = {
-  map2(ra, rb)((_, _))
-}
+object Rand {
+  import RNG._
 
-def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = {
-  rng => fs.foldLeft((List[A](), rng))((p, rand) => {
-    val (a, r2) = rand(p._2)
-    (a :: p._1, r2)
-  })
-}
+  type Rand[+A] = RNG => (A, RNG)
+  // type Rand[+A] = State[RNG, A]
 
-def sequence2[A](fs: List[Rand[A]]): Rand[List[A]] =
-  fs.foldRight(unit(List[A]()))((f, acc) => map2(f, acc)(_ :: _))
+  def unit[A](a: A): Rand[A] = 
+    rng => (a, rng)
 
-def ints2(counts: Int): Rand[List[Int]] = sequence(List.fill(counts)(_.nextInt))
+  def map[A,B](s: Rand[A])(f: A => B): Rand[B] = 
+    rng => {
+      val (a, rng2) = s(rng)
+      (f(a), rng2)
+    }
 
-def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = rng => {
-  val (a, r) = f(rng)
-  g(a)(r)
-}
+  def nonNegativeEven: Rand[Int] =
+    map(nonNegativeInt)(i => i - i % 2)
 
-def nonNegativeLessThan(n: Int): Rand[Int] =
-  flatMap(nonNegativeInt) { i => 
-    val mod = i % n
-    if (i + (n - 1) - mod >= 0) unit(mod)
-    else nonNegativeLessThan(n)
+  def doubleViaMap: Rand[Double] =
+    map(nonNegativeInt)(i => i / (Int.MaxValue.toDouble + 1))
+
+  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = {
+    rng => {
+      val (a, rng1) = ra(rng)
+      val (b, rng2) = rb(rng1)
+      (f(a,b), rng2)
+    }
   }
 
-def mapViaFlatMap[A,B](s: Rand[A])(f: A => B): Rand[B] = {
-  flatMap(s) { a =>
-    unit(f(a))
+  def both[A,B](ra: Rand[A], rb: Rand[B]): Rand[(A, B)] = {
+    map2(ra, rb)((_, _))
   }
-}
-def map2ViaFlatMap[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = {
-  flatMap(ra)(a=> map(rb)(f(a, _)))
+
+  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = {
+    rng => fs.foldLeft((List[A](), rng))((p, rand) => {
+      val (a, r2) = rand(p._2)
+      (a :: p._1, r2)
+    })
+  }
+
+  def sequence2[A](fs: List[Rand[A]]): Rand[List[A]] =
+    fs.foldRight(unit(List[A]()))((f, acc) => map2(f, acc)(_ :: _))
+
+  def ints2(counts: Int): Rand[List[Int]] = sequence(List.fill(counts)(_.nextInt))
+
+  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = rng => {
+    val (a, r) = f(rng)
+    g(a)(r)
+  }
+
+  def nonNegativeLessThan(n: Int): Rand[Int] =
+    flatMap(nonNegativeInt) { i => 
+      val mod = i % n
+      if (i + (n - 1) - mod >= 0) unit(mod)
+      else nonNegativeLessThan(n)
+    }
+
+  def mapViaFlatMap[A,B](s: Rand[A])(f: A => B): Rand[B] = {
+    flatMap(s) { a =>
+      unit(f(a))
+    }
+  }
+  def map2ViaFlatMap[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = {
+    flatMap(ra)(a=> map(rb)(f(a, _)))
+  }
 }
 
 // type State[S,+A] = S => (A, S)
@@ -160,22 +166,24 @@ case object Turn extends Input
 
 case class Machine(locked: Boolean, candies: Int, coins: Int)
 
-def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = {
-  State((m: Machine) => {
-    inputs.foldLeft(((m.coins, m.candies), m))((p, input) => {
-      val newMachine = State.modify((x: Machine) => input match {
-        case Coin => {
-          if (x.locked && x.candies > 0) Machine(false, x.candies, x.coins + 1)
-          else x
-        }
-        case Turn => {
-          if (!x.locked && x.candies > 0) Machine(true, x.candies - 1, x.coins)
-          else x
-        }
-      }).run(p._2)._2
-      ((newMachine.coins, newMachine.candies), newMachine)
+object Machine {
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = {
+    State((m: Machine) => {
+      inputs.foldLeft(((m.coins, m.candies), m))((p, input) => {
+        val newMachine = State.modify((x: Machine) => input match {
+          case Coin => {
+            if (x.locked && x.candies > 0) Machine(false, x.candies, x.coins + 1)
+            else x
+          }
+          case Turn => {
+            if (!x.locked && x.candies > 0) Machine(true, x.candies - 1, x.coins)
+            else x
+          }
+        }).run(p._2)._2
+        ((newMachine.coins, newMachine.candies), newMachine)
+      })
     })
-  })
+  }
 }
 
 object Candy {
@@ -210,29 +218,35 @@ object Candy {
   } yield (s.coins, s.candies)
 }
 
-def main(args: Array[String]): Unit = {
-  val rng = SimpleRNG(42)
-  val (n1, rng2) = rng.nextInt
-  println(n1, rng2)
+object Test {
+  import RNG._
+  import Rand._
+  import Machine._
 
-  val (n2, rng3) = rng2.nextInt
-  println(n2, rng3)
-  println(nonNegativeInt2(rng2))
-  println(nonNegativeInt2(rng2))
-  println(double(rng2))
-  println(double(rng3))
-  println(ints(3)(rng))
+  def main(args: Array[String]): Unit = {
+    val rng = SimpleRNG(42)
+    val (n1, rng2) = rng.nextInt
+    println(n1, rng2)
 
-  val int: Rand[Int] = _.nextInt
-  val randIntDouble: Rand[(Int, Double)] = both(int, double)
-  val randDoubleInt: Rand[(Double, Int)] = both(double, int)
+    val (n2, rng3) = rng2.nextInt
+    println(n2, rng3)
+    println(nonNegativeInt2(rng2))
+    println(nonNegativeInt2(rng2))
+    println(double(rng2))
+    println(double(rng3))
+    println(ints(3)(rng))
 
-  println(ints(3)(rng))
-  println(nonNegativeLessThan(30)(rng))
-  println(simulateMachine(List(Coin, Turn, Coin, Turn, Coin, Turn, Coin, Turn)).run(Machine(true, 5, 10)))
-}
+    val int: Rand[Int] = _.nextInt
+    val randIntDouble: Rand[(Int, Double)] = both(int, double)
+    val randDoubleInt: Rand[(Double, Int)] = both(double, int)
 
-def rollDie: Int = {
-  val rng = new scala.util.Random
-  rng.nextInt(6)
+    println(ints(3)(rng))
+    println(nonNegativeLessThan(30)(rng))
+    println(simulateMachine(List(Coin, Turn, Coin, Turn, Coin, Turn, Coin, Turn)).run(Machine(true, 5, 10)))
+  }
+
+  def rollDie: Int = {
+    val rng = new scala.util.Random
+    rng.nextInt(6)
+  }
 }

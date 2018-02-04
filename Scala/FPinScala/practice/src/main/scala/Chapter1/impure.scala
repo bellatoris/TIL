@@ -7,6 +7,7 @@
 */
 
 // Worst example
+/*
 class Cafe {
   def buyCoffee(cc: CreditCard): Coffee = {
     val cup = new Coffee()
@@ -54,3 +55,4 @@ class Cafe {
   def coalesce(charges: List[Charge]): List[Charge] =
     charges.groupBy(_.cc).values.map(_.reduce(_ combine _)).toList
 }
+*/

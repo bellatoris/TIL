@@ -6,10 +6,11 @@ import java.util.concurrent._
  * def map2[A,B,C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C]
  */
 
-type Par[A] = ExecutorService => Future[A]
-def run[A](s: ExecutorService)(a: Par[A]): Future[A] = a(s)
 
 object Par {
+  type Par[A] = ExecutorService => Future[A]
+
+  def run[A](s: ExecutorService)(a: Par[A]): Future[A] = a(s)
   def unit[A](a: A): Par[A] = (es: ExecutorService) => UnitFuture(a)
 
   private case class UnitFuture[A](get: A) extends Future[A] {
@@ -182,59 +183,63 @@ object Par {
     flatMap(a)(pa => pa)
 }
 
-def sum(ints: IndexedSeq[Int]): Par[Int] = Par.fork {
-  if (ints.length <= 1)
-    Par.unit(ints.headOption getOrElse 0)
-  else {
-    val (l, r) = ints.splitAt(ints.length/2)
-    Par.map2(sum(l), sum(r))(_ + _)
-  }
-}
+object Test {
+  import Par._
 
-def reduce(ints: IndexedSeq[Int])(init: Int, f: (Int, Int) => Int): Par[Int] =
-  Par.fork {
+  def sum(ints: IndexedSeq[Int]): Par[Int] = Par.fork {
     if (ints.length <= 1)
-      Par.unit(ints.headOption getOrElse init)
+      Par.unit(ints.headOption getOrElse 0)
     else {
       val (l, r) = ints.splitAt(ints.length/2)
-      Par.map2(reduce(l)(init, f), reduce(r)(init, f))(f)
+      Par.map2(sum(l), sum(r))(_ + _)
     }
   }
 
-def sum2(ints: IndexedSeq[Int]): Par[Int] = reduce(ints)(0, _ + _)
-def max(ints: IndexedSeq[Int]): Par[Int] =
-  reduce(ints)(Int.MinValue, (a, b) => if (a > b) a else b)
-
-def wordCount(p: List[String]): Par[Int] = {
-  def count(p: IndexedSeq[String]): Par[Int] = Par.fork {
-    if (p.length <= 1) {
-      Par.unit(p.headOption match {
-        case Some(s) => s.split("[ ,!.]+").length
-        case None => 0
-      })
-    } else {
-      val (l, r) = p.splitAt(p.length/2)
-      Par.map2(count(l), count(r))(_ + _)
+  def reduce(ints: IndexedSeq[Int])(init: Int, f: (Int, Int) => Int): Par[Int] =
+    Par.fork {
+      if (ints.length <= 1)
+        Par.unit(ints.headOption getOrElse init)
+      else {
+        val (l, r) = ints.splitAt(ints.length/2)
+        Par.map2(reduce(l)(init, f), reduce(r)(init, f))(f)
+      }
     }
+
+  def sum2(ints: IndexedSeq[Int]): Par[Int] = reduce(ints)(0, _ + _)
+  def max(ints: IndexedSeq[Int]): Par[Int] =
+    reduce(ints)(Int.MinValue, (a, b) => if (a > b) a else b)
+
+  def wordCount(p: List[String]): Par[Int] = {
+    def count(p: IndexedSeq[String]): Par[Int] = Par.fork {
+      if (p.length <= 1) {
+        Par.unit(p.headOption match {
+          case Some(s) => s.split("[ ,!.]+").length
+          case None => 0
+        })
+      } else {
+        val (l, r) = p.splitAt(p.length/2)
+        Par.map2(count(l), count(r))(_ + _)
+      }
+    }
+    count(p.toIndexedSeq)
   }
-  count(p.toIndexedSeq)
-}
 
-def delay[A](fa: => Par[A]): Par[A] =
-  es => fa(es)
+  def delay[A](fa: => Par[A]): Par[A] =
+    es => fa(es)
 
-def main(args: Array[String]): Unit = {
-  val i = List(1,2,3,4,5,6,7,8,9,10)
-  // val es = Executors.newFixedThreadPool(2)
+  def main(args: Array[String]): Unit = {
+    val i = List(1,2,3,4,5,6,7,8,9,10)
+    // val es = Executors.newFixedThreadPool(2)
 
-  val a = Par.lazyUnit({
-    println("hi")
-    42 + 1
-  })
-  val S = Executors.newFixedThreadPool(1)
-  a(S)
-  S.shutdown()
-  // println(Par.equal(S)(a, Par.fork(a)))    // Deadlock!
-  // println(run(es)(sum(i.toIndexedSeq)).get())
-  // println(run(es)(Par.lazyUnit(i)).get)
+    val a = Par.lazyUnit({
+      println("hi")
+      42 + 1
+    })
+    val S = Executors.newFixedThreadPool(1)
+    a(S)
+    S.shutdown()
+    // println(Par.equal(S)(a, Par.fork(a)))    // Deadlock!
+    // println(run(es)(sum(i.toIndexedSeq)).get())
+    // println(run(es)(Par.lazyUnit(i)).get)
+  }
 }

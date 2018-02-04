@@ -1,7 +1,7 @@
+package Chapter2
 import scala.annotation.tailrec
 
-
-object Main {
+object Exercise {
   def fib(n: Int): Int = {
     @tailrec
     def go(m: Int, first: Int, second: Int): Int = {

@@ -1,3 +1,6 @@
+package Chapter3
+
+
 sealed trait List[+A]
 case object Nil extends List[Nothing]
 case class Cons[+A](head: A, tali: List[A]) extends List[A]
@@ -244,7 +247,7 @@ object Tree {
 }
 
 
-object Main {
+object Test {
   def main(args: Array[String]): Unit = {
     val x = List(1, 2, 3, 4, 5) match {
       case Cons(x, Cons(2, Cons(4, _))) => x
