@@ -1,8 +1,9 @@
 package Chapter8
-import org.scalacheck.Gen
-import org.scalacheck.Prop.forAll
 
 object Test {
+  import org.scalacheck.Gen
+  import org.scalacheck.Prop.forAll
+
   val intList = Gen.listOf(Gen.choose(0, 100))
   val prop =
     forAll(intList)(ns => ns.reverse.reverse == ns) &&

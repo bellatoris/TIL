@@ -33,6 +33,26 @@ case class Gen[A](sample: State[RNG, A]) {
 }
 
 object Gen {
-  def choose (start: Int, stopExclusive: Int): Gen[Int] = {
+  // exercise 8.4
+  def choose(start: Int, stopExclusive: Int): Gen[Int] = {
+    assert(start < stopExclusive)
+    Gen[Int](State(rng => {
+      val range = stopExclusive - start
+      val (i, nextRng) = rng.nextInt
+      (i, nextRng)
+    }))
   }
+
+  // exercise 8.5
+  def unit[A](a: => A): Gen[A] = Gen[A](State(rng => (a, rng)))
+
+  def boolean: Gen[Boolean] = Gen[Boolean](State(rng => {
+    val (i, nextRng) = rng.nextInt
+    (i % 2 == 0, nextRng)
+  }))
+
+  def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = Gen[List[A]](State(rng => {
+    val (a, nextRng) = g.sample.run(rng)
+    (List.fill(n)(a), nextRng)
+  }))
 }
