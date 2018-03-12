@@ -294,7 +294,8 @@ object Test {
     println(List.addWith(List(1,2,3), List(4,5,6)))
 
     println(List.hasSubsequence(List(1,2,3,4), List(1,2,4)))
-    // val longList= List.makeList(1000000)
+    val longList= List.makeList(1000000)
+    println(List.foldLeft(longList, 0)(_ + _))
     // println(List.foldRightViaFoldLeft(longList, 0)(_ + _))
   }
 }

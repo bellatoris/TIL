@@ -36,11 +36,14 @@ object Gen {
   // exercise 8.4
   def choose(start: Int, stopExclusive: Int): Gen[Int] = {
     assert(start < stopExclusive)
-    Gen[Int](State(rng => {
-      val range = stopExclusive - start
-      val (i, nextRng) = rng.nextInt
-      (i, nextRng)
-    }))
+    val range = stopExclusive - start
+    Gen[Int](Rand2.nonNegativeLessThan(range).map(i => start + i))
+  }
+
+  def choose2(start: Int, stopExclusive: Int): Gen[Int] = {
+    assert(start < stopExclusive)
+    val range = stopExclusive - start
+    Gen[Int](State[RNG, Int](RNG.nonNegativeInt).map(n => start + n % range))
   }
 
   // exercise 8.5
@@ -51,8 +54,65 @@ object Gen {
     (i % 2 == 0, nextRng)
   }))
 
-  def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = Gen[List[A]](State(rng => {
-    val (a, nextRng) = g.sample.run(rng)
-    (List.fill(n)(a), nextRng)
-  }))
+  def listOfInts(n: Int): Gen[List[Int]] = {
+    Gen[List[Int]](State[RNG, List[Int]](RNG.ints(n)))
+  }
+
+  def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = {
+    /*
+    def nested(count: Int)(rng: RNG): (List[A], RNG) = count match {
+      case c if c > 0 => {
+        val (a, r) = g.sample.run(rng)
+        val (al, r2) = nested(c - 1)(r)
+
+        (a :: al, r2)
+      }
+      case _ => (Nil, rng)
+    }
+    */
+
+    import scala.annotation.tailrec
+    @tailrec
+    def nested(count: Int, al: List[A])(rng: RNG): (List[A], RNG) = count match {
+      case c if c > 0 => {
+        val (a, r) = g.sample.run(rng)
+        nested(c - 1, a :: al)(r)
+      }
+      case _ => (al, rng)
+    }
+    Gen[List[A]](State(nested(n, Nil)))
+  }
+
+  def listOfN2[A](n: Int, g: Gen[A]): Gen[List[A]] = {
+    Gen(State.sequence(List.fill(n)(g.sample)))
+  }
+
+  // play
+  def choose2Int(start: Int, stopExclusive: Int): Gen[(Int, Int)] = {
+    val g: Gen[List[Int]] = listOfN2(2, choose(start, stopExclusive))
+    Gen(g.sample.map((l: List[Int]) => (l(0), l(1))))
+  }
+
+  def toOption[A](g: Gen[A]): Gen[Option[A]] = {
+    Gen(g.sample.map(a => Some(a)))
+  }
+
+  // def toA[A](g: Gen[Option[A]]): Gen[A] = {
+  //   Gen(g.sample.map(option => option match {
+  //     Some(a) => a
+  //     None => {
+  //       println("None is coming")
+  //     }
+  //   }))
+  // }
+
+  def nextChar(): Gen[Char] = {
+    val low  = 33
+    val high = 127
+    Gen[Char](choose2(low, high).sample.map(i => i.toChar))
+  }
+
+  def nextString(n: Int): Gen[String] = {
+    Gen[String](listOfN2(n, nextChar()).sample.map(l => l.mkString))
+  }
 }

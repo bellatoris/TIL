@@ -16,20 +16,12 @@ case class SimpleRNG(seed: Long) extends RNG {
 
 object RNG {
   def nonNegativeInt(rng: RNG): (Int, RNG) = {
-     val (n1, rng2) = rng.nextInt
-
-     if (n1 > Int.MaxValue) nonNegativeInt(rng2)
-     else if (n1 < 0 || n1 == Int.MinValue) nonNegativeInt(rng2)
-     else (n1, rng2)
-  }
-
-  def nonNegativeInt2(rng: RNG): (Int, RNG) = {
     val (i, r) = rng.nextInt
     (if (i < 0) -(i + 1) else i, r)
   }
 
   def double(rng: RNG): (Double, RNG) = {
-    val (i, r) = nonNegativeInt2(rng)
+    val (i, r) = nonNegativeInt(rng)
     (i / (Int.MaxValue.toDouble + 1), r)
   }
 
@@ -132,6 +124,18 @@ object Rand {
   }
 }
 
+object Rand2 {
+  import RNG._
+
+  def nonNegativeLessThan(n: Int): State[RNG, Int] = {
+    State[RNG, Int](nonNegativeInt).flatMap(i => {
+      val mod = i % n
+      if (i + (n - 1) - mod >= 0) State.unit(mod)
+      else nonNegativeLessThan(n)
+    })
+  }
+}
+
 // type State[S,+A] = S => (A, S)
 case class State[S,+A](run: S => (A,S)) {
   def flatMap[B](f: A => State[S,B]): State[S,B] = State(s => {
@@ -146,6 +150,7 @@ case class State[S,+A](run: S => (A,S)) {
     } yield f(a, b)
   }
 }
+
 object State {
   def unit[S, A](a: A): State[S, A] = State(s => (a, s))
   def sequence[S, A](fs: List[State[S, A]]): State[S, List[A]] =
@@ -228,8 +233,8 @@ object Test {
 
     val (n2, rng3) = rng2.nextInt
     println(n2, rng3)
-    println(nonNegativeInt2(rng2))
-    println(nonNegativeInt2(rng2))
+    println(nonNegativeInt(rng2))
+    println(nonNegativeInt(rng2))
     println(double(rng2))
     println(double(rng3))
     println(ints(3)(rng))
