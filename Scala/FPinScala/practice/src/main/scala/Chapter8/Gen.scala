@@ -7,29 +7,39 @@ import Chapter7.Par.Par
 import java.util.concurrent.{Executors,ExecutorService}
 import Prop._
 
-/*
-{
-  // exercise 8.3
-  trait Prop {
-    def check: Boolean
-    def &&(p: Prop): Prop = new Prop {
-      def check = Prop.this.check && p.check
-    }
+
+case class SGen[+A](forSize: Int => Gen[A]) {
+  def flatMap[B](f: A => SGen[B]): SGen[B] = SGen[B] {
+    (n: Int) => forSize(n).flatMap(a => f(a).forSize(n))
+  }
+  def apply(n: Int): Gen[A] = forSize(n)
+
+  def map[B](f: A => B): SGen[B] = SGen[B] {
+    (n: Int) => forSize(n) map f 
   }
 }
-*/
 
-trait Prop {
-  def check: Either[(FailedCase, SuccessCount), SuccessCount]
-  def forAll[A](a: Gen[A])(f: A => Boolean): Prop
-}
+case class Gen[+A](sample: State[RNG, A]) {
+  // exercise 8.6
+  def flatMap[B](f: A => Gen[B]): Gen[B] = {
+    // val stateGenB: State[RNG, Gen[B]] = this.sample.map(f)
+    // val stateB: State[RNG, Gen[B]] = stateGenB.flatMap(genB => genB.sample)
+    // Gen(stateB)
 
-object Prop {
-  type FailedCase = String
-  type SuccessCount = Int
-}
+    Gen(sample.map(f).flatMap(_.sample))
+  }
 
-case class Gen[A](sample: State[RNG, A]) {
+  def listOfN(size: Gen[Int]): Gen[List[A]] = {
+    size.flatMap(n => Gen.listOfN2(n, this))
+  }
+
+  // answer
+  def flatMap2[B](f: A => Gen[B]): Gen[B] =
+    Gen(sample.flatMap(a => f(a).sample))
+
+  // exercise 8.10
+  def unsized: SGen[A] = SGen[A](n => this)
+  def map[B](f: A => B): Gen[B] = Gen[B](sample.map(f))
 }
 
 object Gen {
@@ -114,5 +124,21 @@ object Gen {
 
   def nextString(n: Int): Gen[String] = {
     Gen[String](listOfN2(n, nextChar()).sample.map(l => l.mkString))
+  }
+
+  // exercise 8.7
+  def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] = {
+    boolean.flatMap2(b => b match {
+      case true => g1
+      case false => g2
+    })
+  }
+
+  // exercise 8.8
+  def weighted[A](g1: (Gen[A], Double), g2: (Gen[A], Double)): Gen[A] = {
+    val weight: Double = g1._2.abs / (g1._2.abs + g2._2.abs)
+    Gen(State[RNG, Int](RNG.nonNegativeInt)).flatMap(n => {
+      if (n / (Int.MaxValue.toDouble + 1) < weight) g1._1 else g2._1
+    })
   }
 }
